@@ -22,7 +22,6 @@ import com.example.androiddevelopment.glumcilegende.provider.GlumacProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 
 /**
  * Created by BBLOJB on 21.11.2017..

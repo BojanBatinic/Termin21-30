@@ -24,6 +24,7 @@ import java.util.ArrayList;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.adapters.DrawerListAdapter;
+import com.example.androiddevelopment.glumcilegende.async.SimpleService;
 import com.example.androiddevelopment.glumcilegende.dialogs.AboutDialog;
 import com.example.androiddevelopment.glumcilegende.fragments.DetailFragment;
 import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
@@ -172,7 +173,8 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         switch (item.getItemId()){
             case R.id.action_refresh:
                 Toast.makeText(MainActivity.this, "Sinhronizacija pokrenuta u pozadini niti. dobro :)",Toast.LENGTH_SHORT).show();
-                new SimpleSyncTask(MainActivity.this).execute();
+                Intent intent = new Intent(MainActivity.this, SimpleService.class);
+                startService(intent);
                 break;
             case R.id.action_add:
                 try {

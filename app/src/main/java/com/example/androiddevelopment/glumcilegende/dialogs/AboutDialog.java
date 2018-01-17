@@ -21,7 +21,6 @@ public class AboutDialog extends AlertDialog.Builder {
         setPositiveButton(R.string.dialog_about_yes, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 dialog.dismiss();
-
             }
         });
 

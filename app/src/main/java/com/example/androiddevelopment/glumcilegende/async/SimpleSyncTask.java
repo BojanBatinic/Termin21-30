@@ -1,10 +1,9 @@
 package com.example.androiddevelopment.glumcilegende.async;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.widget.Toast;
-
-import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
 
 
 /**
@@ -24,12 +23,10 @@ import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
 
 public class SimpleSyncTask extends AsyncTask<Void, Void, Void>{
 
-    private Activity activity;
-    private ListFragment.OnGlumacSelectedListener listener;
+    private Context context;
 
-    public SimpleSyncTask(Activity activity){
-        this.activity = activity;
-        listener = (ListFragment.OnGlumacSelectedListener) activity;
+    public SimpleSyncTask(Context context){
+        this.context = context;
     }
     /**
      * Metoda se poziva pre samog starta pozadinskog zadatka
@@ -59,7 +56,7 @@ public class SimpleSyncTask extends AsyncTask<Void, Void, Void>{
      */
     @Override
     protected void onPostExecute(Void products){
-        Toast.makeText(activity, "Sync done", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Sync done", Toast.LENGTH_SHORT).show();
     }
 
 }

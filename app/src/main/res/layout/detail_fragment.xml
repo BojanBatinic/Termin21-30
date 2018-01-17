@@ -61,8 +61,8 @@
         android:id="@+id/rating"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:numStars="5"
-        android:layout_below="@id/film"/>
+        android:layout_below="@id/film"
+        android:numStars="5" />
 
 
 
@@ -80,11 +80,6 @@
         android:src="@drawable/ic_action_like" />
 
 </android.support.design.widget.CoordinatorLayout>
-       <!-- android:layout_width="240dp" -->
-
-       <!-- android:layout_below="@+id/rb_rating"
-        android:layout_centerHorizontal="true"
-        android:text="@string/fragment_detail_button_like"/>-->
 
 
 
