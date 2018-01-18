@@ -32,8 +32,13 @@
             android:parentActivityName=".activities.MainActivity"
             android:theme="@style/AppTheme.NoActionBar" />
 
-        <!-- Moramo definisati punu putanju do naseg servisa-->
+        <!-- Moramo definisati punu putanju do naseg servisa.
+        Ovo je obavezno, bez definicije servis-a necemo moci ni da ga koristimo.-->
         <service android:name="com.example.androiddevelopment.glumcilegende.async.SimpleService" />
+
+        <!-- Moramo definisati punu putanju do naseg servisa.
+        Ovo je obavezno, bez definicije servis-a necemo moci ni da ga koristimo.-->
+        <receiver android:name="com.example.androiddevelopment.glumcilegende.async.SimpleReceiver" />
 
         </application>
 

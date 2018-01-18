@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-  <!--  <string-array name="telefon_tip">
-    <item>Kucni</item>
-    <item>Mobilni</item>
-    <item>Poslovni</item>
-    </string-array> -->
-
     <string-array name="glumci_names">
         <item>Velimir Bata Živojinović</item>
         <item>Dragan Gaga Nikolić</item>

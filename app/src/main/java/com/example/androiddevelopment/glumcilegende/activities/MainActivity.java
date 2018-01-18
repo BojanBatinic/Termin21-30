@@ -1,8 +1,12 @@
 package com.example.androiddevelopment.glumcilegende.activities;
 
 
+import android.app.AlarmManager;
 import android.app.FragmentTransaction;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.view.GravityCompat;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.adapters.DrawerListAdapter;
+import com.example.androiddevelopment.glumcilegende.async.SimpleReceiver;
 import com.example.androiddevelopment.glumcilegende.async.SimpleService;
 import com.example.androiddevelopment.glumcilegende.dialogs.AboutDialog;
 import com.example.androiddevelopment.glumcilegende.fragments.DetailFragment;
@@ -31,6 +36,7 @@ import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
 import com.example.androiddevelopment.glumcilegende.fragments.ListFragment.OnGlumacSelectedListener;
 import com.example.androiddevelopment.glumcilegende.model.NavigationItem;
 import com.example.androiddevelopment.glumcilegende.async.SimpleSyncTask;
+import com.example.androiddevelopment.glumcilegende.tools.ReviewerTools;
 
 // Each activity extends Activity class or AppCompatActivity class
 public class MainActivity extends AppCompatActivity implements OnGlumacSelectedListener {
@@ -66,6 +72,10 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
     private boolean detailShown = false; // Is the DetailFragment fragment shown?
 
     private int productId = 0; // selected item id
+
+    private SimpleReceiver sync;
+    private AlarmManager manager;
+    private PendingIntent pendingIntent;
 
     // onCreate method is a lifecycle method called when he activity is starting
     @Override
@@ -166,14 +176,18 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         getMenuInflater().inflate(R.menu.activity_item_detail, menu);
         return super.onCreateOptionsMenu(menu);
     }
-
+    /**
+     * Metoda koja je izmenjena da reflektuje rad sa Asinhronim zadacima
+     */
     // onOptionsItemSelected method is called whenever an item in the Toolbar is selected.
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
         switch (item.getItemId()){
             case R.id.action_refresh:
                 Toast.makeText(MainActivity.this, "Sinhronizacija pokrenuta u pozadini niti. dobro :)",Toast.LENGTH_SHORT).show();
+                int status = ReviewerTools.getConStatus(getApplicationContext());
                 Intent intent = new Intent(MainActivity.this, SimpleService.class);
+                intent.putExtra("STATUS", status);
                 startService(intent);
                 break;
             case R.id.action_add:
@@ -275,6 +289,87 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
             listShown = true;
             detailShown = false;
         }
+    }
+    /**
+     * Prilikom startovanja aplikacije potrebno je registrovati
+     * elemente sa kojimaa radimo. Kada aplikacija nije aktivna
+     * te elemente moramo da uklonimo.
+     */
+    @Override
+    protected void onResume(){
+        super.onResume();
+
+        setUpReceiver();
+        setUpManager();
+    }
+    /**
+     * Registrujemo nas BroadcastReceiver i dodajemo mu 'filter'.
+     * Filter koristimo prilikom prispeca poruka. Jedan receiver
+     * moze da reaguje na vise tipova poruka. One nam kazu
+     * sta tacno treba da se desi kada poruka odredjenog tipa (filera)
+     * stigne.
+     * */
+    private void setUpReceiver(){
+        sync = new SimpleReceiver();
+        //registracija jednog filtera
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("SYNC_DATA");
+        registerReceiver(sync, filter);
+    }
+    /**
+     * Kada zelimo da se odredjeni zadaci ponavljaju, potrebno je
+     * da registrujemo manager koji ce motriti kada je vreme da se
+     * taj posao obavi. Kada registruje vreme za pokretanje zadatka
+     * on emituje Intent operativnom sistemu sta je potrebno da se
+     * desi.
+     * Takodje potrebno je da definisemo ponavljanja tj. na koliko
+     * vremena zelimo da se posao ponovo obavi
+     * */
+    private void setUpManager(){
+        //Intent koji ce manager emitovat operativnom sisitemu
+        //Startujemo jedan servis
+        Intent intent = new Intent(this, SimpleService.class);
+        int status = ReviewerTools.getConStatus(getApplicationContext());
+        intent.putExtra("STATUS", status);
+        /**definisemo manager i kazemo kada je potrebno da se ponavlja
+
+        parametri:
+            context: this - u kom kontekstu zelimo da se intent izvrsava
+            requestCode: 0 - nas jedinstev kod
+            intent: intent koji zelimo da se izvrsi kada dodje vreme
+            flags: 0 - flag koji opisuje sta da se radi sa intent-om kada se poziv desi
+            detaljnije:https://developer.android.com/reference/android/app/PendingIntent.html#getService(android.content.Context, int, android.content.Intent, int)
+        */
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
+        //koristicemo sistemski AlarmManager pa je potrebno da dobijemo
+        //njegovu instancu.
+        AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        //definisemo kako ce alarm manager da reaguje.
+        //prvi parametar kaze da ce reagovati u rezimu ponavljanja
+        //drugi parametar od kada krece da meri vreme
+        //treci parametar na koliko jedinica vremena ce ragovati (minimalno 1min)
+        //poslednji parametar nam govori koju akciju treba da preduzmemo kada se alarm iskljuci
+        manager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(),
+                ReviewerTools.calTimeTillNextSync(1), pendingIntent);
+        Toast.makeText(this, "Alarm Set", Toast.LENGTH_SHORT).show();
+    }
+    /**
+     * Moramo voditi racuna o komponentama koje je potrebno osloboditi
+     * kada aplikacija nije aktivna.
+     * */
+    @Override
+    protected void onPause(){
+        //ako je manager kreiran potrebno je da ga uklonimo
+        if(manager != null){
+            manager.cancel(pendingIntent);
+            manager = null;
+        }
+        //osloboditi resurse koje koristi receiver
+        if(sync != null){
+            unregisterReceiver(sync);
+            sync = null;
+        }
+        super.onPause();
     }
 
 }

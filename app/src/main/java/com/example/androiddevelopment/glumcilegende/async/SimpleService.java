@@ -2,6 +2,7 @@ package com.example.androiddevelopment.glumcilegende.async;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
@@ -29,13 +30,14 @@ public class SimpleService extends Service{
          * Provericemo trenutnu povezanost sa mrezom.
          * Za ovo koristimo dostupne pozive android operativnog sistema
          * */
-        int status = ReviewerTools.getConStatus(getApplicationContext());
+       // int status = ReviewerTools.getConStatus(getApplicationContext());
+        int status = intent.getExtras().getInt("STATUS");
         /**
          * Primer poziva asinhronog zadatka ako ima veze ka mrezi
          * npr. sinhronizacija mail-ova, fotografija, muzike, dokumenata i sl.
          * */
         if (status == ReviewerTools.TYPE_WIFI){
-            new SimpleSyncTask(getApplicationContext()).execute();
+            new SimpleSyncTask(getApplicationContext()).execute(status);
         }
         /**
          * Zaustaviti servis nakon obavljenog pokretanja asinhronog zadatka.
