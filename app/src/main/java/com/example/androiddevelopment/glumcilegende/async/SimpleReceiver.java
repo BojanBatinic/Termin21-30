@@ -54,7 +54,7 @@ public class SimpleReceiver extends BroadcastReceiver {
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
 
         Bitmap bm = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
-        Log.i("MY_ANDROID_APP", "NOTIF");
+        Log.i("MY_ANDROID_APP", "Notif");
 
         if (resultCode == ReviewerTools.TYPE_NOT_CONNECTED){
             mBuilder.setSmallIcon(R.drawable.ic_action_settings);
