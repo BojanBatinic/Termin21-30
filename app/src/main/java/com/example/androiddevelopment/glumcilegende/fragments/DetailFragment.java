@@ -5,23 +5,26 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RatingBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.example.androiddevelopment.glumcilegende.R;
-import com.example.androiddevelopment.glumcilegende.model.Film;
-import com.example.androiddevelopment.glumcilegende.model.Glumac;
-import com.example.androiddevelopment.glumcilegende.provider.FilmProvider;
-import com.example.androiddevelopment.glumcilegende.provider.GlumacProvider;
+import com.example.androiddevelopment.glumcilegende.activities.MainActivity;
+import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.SQLException;
 
 /**
  * Created by BBLOJB on 21.11.2017..
@@ -39,10 +42,6 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public void onCreate(Bundle saveInstanceState) {
         super.onCreate(saveInstanceState);
 
-        if (glumac == null) {
-            glumac = GlumacProvider.getGlumacById(0);
-        }
-
     }
 
     // onActivityCreated method is a life-cycle method that is called when the fragment's activity has been created and this fragment's view hierarchy instantiated.
@@ -54,13 +53,10 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
 
         if (savedInstanceState != null) {
             glumac = new Glumac();
-            glumac.setId(savedInstanceState.getInt("id"));
-            glumac.setName(savedInstanceState.getString("name"));
+            glumac.setmId(savedInstanceState.getInt("id"));
+            glumac.setmName(savedInstanceState.getString("name"));
             glumac.setBiografija(savedInstanceState.getString("biografija"));
             glumac.setRating(savedInstanceState.getFloat("rating"));
-            int filmId = savedInstanceState.getInt("film_id");
-            Film film = FilmProvider.getFilmById(filmId);
-            glumac.setFilm(film);
             glumac.setImage(savedInstanceState.getString("image"));
         }
     }
@@ -70,11 +66,10 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
         super.onSaveInstanceState(savedInstanceState);
 
         if (savedInstanceState != null) {
-            savedInstanceState.putInt("id", glumac.getId());
-            savedInstanceState.putString("name", glumac.getName());
+            savedInstanceState.putInt("id", glumac.getmId());
+            savedInstanceState.putString("name", glumac.getmName());
             savedInstanceState.putString("biografija", glumac.getBiografija());
             savedInstanceState.putFloat("rating", glumac.getRating());
-            savedInstanceState.putInt("film_id", glumac.getFilm().getId());
             savedInstanceState.putString("image", glumac.getImage());
         }
     }
@@ -83,10 +78,12 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log.v("DetailFragment", "OnCreateView");
 
+        setHasOptionsMenu(true);
+
         View view = inflater.inflate(R.layout.detail_fragment, container, false);
 
         TextView name = (TextView) view.findViewById(R.id.name);
-        name.setText(glumac.getName());
+        name.setText(glumac.getmName());
 
         //finds "tvBiografija" TextView and sets "text" property
         TextView biografija = (TextView) view.findViewById(R.id.biografija);
@@ -107,27 +104,39 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
             e.printStackTrace();
         }
         //finds "spFilm" Spiner and sets "selection" property
-        Spinner film = (Spinner) view.findViewById(R.id.film);
-        String[] filmovi = getActivity().getResources().getStringArray(R.array.film_names);
-        ArrayAdapter<String> adapter = new ArrayAdapter(getActivity(), android.R.layout.simple_spinner_item, filmovi);
-        film.setAdapter(adapter);
-        film.setSelection(glumac.getFilm().getId());
+        Spinner spinner = (Spinner) view.findViewById(R.id.film);
+        ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<String>(
+                getActivity(),
+                android.R.layout.simple_spinner_item,
+                getResources().getStringArray(R.array.film_names)
+        ); //selected item will lookk like a spinner set from XML
+        spinnerArrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(spinnerArrayAdapter);
+
+        String[] data = getResources().getStringArray(R.array.film_names);
+
+        for (int i=0; i<data.length; i++){
+            if (data[i].equalsIgnoreCase(glumac.getFilm())){
+                spinner.setSelection(i);
+                break;
+            }
+        }
 
         return view;
     }
 
-    public void setGlumac(int id) {
-        glumac = GlumacProvider.getGlumacById(id);
+    public void setGlumac(Glumac glumac) {
+        this.glumac = glumac;
     }
 
-    public void updateGlumac(int id) {
-        glumac = GlumacProvider.getGlumacById(id);
+    public void updateGlumac(Glumac glumac) {
+        this.glumac = glumac;
 
-        TextView name = (TextView) getActivity().findViewById(R.id.name);
-        name.setText(glumac.getName());
+        EditText name = (EditText) getActivity().findViewById(R.id.name);
+        name.setText(glumac.getmName());
 
         //finds "tvBiografija" TextView and sets "text" property
-        TextView biografija = (TextView) getActivity().findViewById(R.id.biografija);
+        EditText biografija = (EditText) getActivity().findViewById(R.id.biografija);
         biografija.setText(glumac.getBiografija());
 
         //finds "rbRating" RatingBar and sets "rating" property
@@ -144,9 +153,6 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        Spinner film = (Spinner) getActivity().findViewById(R.id.film);
-        film.setSelection(glumac.getFilm().getId());
     }
 
     @Override
@@ -159,5 +165,64 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public void onNothingSelected(AdapterView<?> parent) {
         //product.setFilm(null);
     }
+    /**
+     * Kada dodajemo novi element u toolbar potrebno je da obrisemo prethodne elmente
+     * zato pozivamo menu.clear() i dodajemo nove toolbar elemente
+     * */
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater){
+        menu.clear();
+        inflater.inflate(R.menu.detail_fragment_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
 
+    private void doUpdateElement(){
+        if (glumac != null){
+            EditText name = (EditText) getActivity().findViewById(R.id.name);
+            glumac.setmName(name.getText().toString());
+
+            //finds "tvBiografija" TextView and sets "text" property
+            EditText biografija = (EditText) getActivity().findViewById(R.id.biografija);
+            glumac.setBiografija(biografija.getText().toString());
+
+            //finds "rbRating" RatingBar and sets "rating" property
+            RatingBar rating = (RatingBar) getActivity().findViewById(R.id.rating);
+            glumac.setRating(rating.getRating());
+
+            Spinner film = (Spinner) getActivity().findViewById(R.id.film);
+            glumac.setFilm(film.getSelectedItem().toString());
+
+            try{
+                ((MainActivity) getActivity()).getDbHelper().getGlumacDao().update(glumac);
+            }catch (SQLException e){
+                e.printStackTrace();
+            }
+            getActivity().onBackPressed();
+        }
+    }
+    private void  doRemoveElement(){
+        if (glumac != null){
+            try{
+                ((MainActivity) getActivity()).getDbHelper().getGlumacDao().delete(glumac);
+            }catch (SQLException e){
+                e.printStackTrace();
+            }
+            getActivity().onBackPressed();
+        }
+    }
+    /**
+     * Na fragment dodajemo element za brisanje elementa i za izmenu podataka
+     * */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch (item.getItemId()){
+            case R.id.remove:
+                doRemoveElement();
+                break;
+            case R.id.update:
+                doUpdateElement();
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 }

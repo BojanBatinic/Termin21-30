@@ -1,53 +1,44 @@
 package com.example.androiddevelopment.glumcilegende.activities;
 
 
-import android.Manifest;
-import android.app.AlarmManager;
+
 import android.app.FragmentTransaction;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.List;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.adapters.DrawerListAdapter;
-import com.example.androiddevelopment.glumcilegende.async.SimpleReceiver;
-import com.example.androiddevelopment.glumcilegende.async.SimpleService;
+import com.example.androiddevelopment.glumcilegende.db.DbHelper;
+import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
 import com.example.androiddevelopment.glumcilegende.dialogs.AboutDialog;
 import com.example.androiddevelopment.glumcilegende.fragments.DetailFragment;
 import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
 import com.example.androiddevelopment.glumcilegende.fragments.ListFragment.OnGlumacSelectedListener;
 import com.example.androiddevelopment.glumcilegende.model.NavigationItem;
-import com.example.androiddevelopment.glumcilegende.async.SimpleSyncTask;
-import com.example.androiddevelopment.glumcilegende.tools.ReviewerTools;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
 
 // Each activity extends Activity class or AppCompatActivity class
 public class MainActivity extends AppCompatActivity implements OnGlumacSelectedListener {
-
-  private static final  String TAG = "PERMISSIONS";
 
     /* The click listner for ListView in the navigation drawer */
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
@@ -79,9 +70,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
 
     private int productId = 0; // selected item id
 
-    private SimpleReceiver sync;
-    private AlarmManager manager;
-    private PendingIntent pendingIntent;
+    private DbHelper databaseHelper;
 
     // onCreate method is a lifecycle method called when he activity is starting
     @Override
@@ -92,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         //draws activity`s layout
         setContentView(R.layout.main);
 
-       //Manages NavigationDrawer
+        //Manages NavigationDrawer
 
         //Populates a list of NavigationDrawer items
         navigationItems.add(new NavigationItem(getString(R.string.drawer_home), getString(R.string.drawer_home_long), R.drawable.ic_action_product));
@@ -117,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         setSupportActionBar(toolbar);
         final android.support.v7.app.ActionBar actionBar = getSupportActionBar();
 
-        if (actionBar != null){
+        if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setHomeAsUpIndicator(R.drawable.ic_drawer);
             actionBar.setHomeButtonEnabled(true);
@@ -146,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         // Manages fragments
 
         // If the activity is started for the first time create master fragment
-        if(savedInstanceState == null) {
+        if (savedInstanceState == null) {
             // FragmentTransaction is a set of changes (e.g. adding, removing and replacing fragments) that you want to perform at the same time.
             FragmentTransaction ft = getFragmentManager().beginTransaction();
             ListFragment listFragment = new ListFragment();
@@ -157,12 +146,12 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         }
 
         // If the device is in the landscape mode and the detail fragment is null create detail fragment
-        if(findViewById(R.id.displayDetail) != null){
+        if (findViewById(R.id.displayDetail) != null) {
             landscapeMode = true;
             getFragmentManager().popBackStack();
 
             DetailFragment detailFragment = (DetailFragment) getFragmentManager().findFragmentById(R.id.displayDetail);
-            if(detailFragment == null){
+            if (detailFragment == null) {
                 FragmentTransaction ft = getFragmentManager().beginTransaction();
                 detailFragment = new DetailFragment();
                 ft.replace(R.id.displayDetail, detailFragment, "Detail_Fragment1");
@@ -177,80 +166,69 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         productId = 0;
     }
 
+    //da bi dodali podatak u bazu, potrebno je da napravimo objekat klase
+    //koji reprezentuje tabelu i popunimo podacima
+    private void addItem() {
+        Glumac glumac = new Glumac();
+        glumac.setmName("Zoran Radmilović");
+        glumac.setBiografija("Legendarni Radovan III, Majstor iz Majsorske radionice itd...");
+        glumac.setRating(5f);
+        glumac.setImage("zoran.jpg");
+
+        //pozovemo metodu create da bi upisali u bazu
+        try {
+            getDbHelper().getGlumacDao().create(glumac);
+            refresh();
+            Toast.makeText(this, "Actor inserted", Toast.LENGTH_SHORT).show();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
-    public boolean onCreateOptionsMenu(Menu menu){
+    public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_item_detail, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
-    /**
-     * Od verzije Marshmallow Android uvodi pojam dinamickih permisija
-     * Sto korisnicima olaksva rad, a programerima uvodi dodadan posao.
-     * Cela ideja ja u tome, da se permisije ili prava da aplikcija
-     * nesto uradi, ne zahtevaju prilikom instalacije, nego prilikom
-     * prve upotrebe te funkcionalnosti. To za posledicu ima da mi
-     * svaki put moramo da proverimo da li je odredjeno pravo dopustneo
-     * ili ne. Iako nije da ponovo trazimo da korisnik dopusti, u protivnom
-     * tu funkcionalnost necemo obaviti uopste.
-     * */
-    public boolean isStoPerGranted() {
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED &&
-                    checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                            == PackageManager.PERMISSION_GRANTED) {
-                Log.v(TAG, "Permission is granted");
-                return true;
-            } else {
-                Log.v(TAG, "Permission is revoked");
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-                return false;
-            }
-        } else {//permission is automatically granted on sdk<23 upon installation
-            Log.v(TAG, "Permission is granted");
-            return true;
-        }
-    }
-    /**
-     * Ako odredjena funkcija nije dopustena, saljemo zahtev android
-     * sistemu da zahteva odredjene permisije. Korisniku se prikazuje
-     * dialog u kom on zeli ili ne da dopusti odedjene permisije.
-     */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1]
-                == PackageManager.PERMISSION_GRANTED){
-            Log.v(TAG, "Permission: " + permissions[0] + "was " + grantResults[0]);
-        }
-    }
-
-    /**
-     * Metoda koja je izmenjena da reflektuje rad sa Asinhronim zadacima
-     */
-    // onOptionsItemSelected method is called whenever an item in the Toolbar is selected.
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item){
-        switch (item.getItemId()){
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
             case R.id.action_refresh:
-                if (isStoPerGranted()){
-                    String text = ReviewerTools.readFromFile(this, "myfile.txt");
-                    Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
-                }
+                refresh();
                 break;
             case R.id.action_add:
-                if (isStoPerGranted()){
-                    ReviewerTools.writeToFile(new Date().toString(), this, "myfile.txt");
-                }
+                addItem();
                 break;
         }
+
         return super.onOptionsItemSelected(item);
     }
 
+    // refresh() prikazuje novi sadrzaj. Povucemo nov sadrzaj iz baze i popunimo listu
+    private void refresh() {
+        ListView listView = (ListView) findViewById(R.id.glumci);
+
+        if (listView != null) {
+            ArrayAdapter<Glumac> adapter = (ArrayAdapter<Glumac>) listView.getAdapter();
+
+            if (listView != null) {
+                try {
+                    adapter.clear();
+                    List<Glumac> list = getDbHelper().getGlumacDao().queryForAll();
+                    adapter.addAll(list);
+                    adapter.notifyDataSetChanged();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
     // Overrides setTitle method to support older api levels
     @Override
-    public void setTitle(CharSequence title){
+    public void setTitle(CharSequence title) {
         getSupportActionBar().setTitle(title);
     }
 
@@ -265,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
 
     // onConfigurationChanged method is called when the device configuration changes to pass configuration change to the drawer toggle
     @Override
-    public void onConfigurationChanged(Configuration newCconfig){
+    public void onConfigurationChanged(Configuration newCconfig) {
         super.onConfigurationChanged(newCconfig);
         // Pass any configuration change to the drawer toggle
         drawerToggle.onConfigurationChanged(newCconfig);
@@ -276,7 +254,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         if (position == 0) {
             // FirstActivity is already shown
         } else if (position == 1) {
-            Intent settings = new Intent(MainActivity.this,SettingsActivity.class);
+            Intent settings = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(settings);
         } else if (position == 2) {
             if (dialog == null) {
@@ -298,34 +276,40 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
     }
 
     @Override
-    public void onGlumacSelected(int id){
+    public void onGlumacSelected(int id) {
 
         productId = id;
 
-        if(landscapeMode) {
-            DetailFragment detailFragment = (DetailFragment) getFragmentManager().findFragmentById(R.id.displayDetail);
-            detailFragment.updateGlumac(id);
-        } else {
-            DetailFragment detailFragment = new DetailFragment();
-            detailFragment.setGlumac(id);
-            FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.replace(R.id.displayList, detailFragment, "Detail_Fragment2");
-            ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
-            ft.addToBackStack("Detail_Fragment2");
-            ft.commit();
-            listShown = false;
-            detailShown = true;
+        try {
+            Glumac glumac = getDbHelper().getGlumacDao().queryForId(id);
 
+            if (landscapeMode) {
+                DetailFragment detailFragment = (DetailFragment) getFragmentManager().findFragmentById(R.id.displayDetail);
+                detailFragment.updateGlumac(glumac);
+            } else {
+                DetailFragment detailFragment = new DetailFragment();
+                detailFragment.setGlumac(glumac);
+                FragmentTransaction ft = getFragmentManager().beginTransaction();
+                ft.replace(R.id.displayList, detailFragment, "Detail_Fragment2");
+                ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+                ft.addToBackStack("Detail_Fragment2");
+                ft.commit();
+                listShown = false;
+                detailShown = true;
+
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
     @Override
-    public void onBackPressed(){
-        if(landscapeMode){
+    public void onBackPressed() {
+        if (landscapeMode) {
             finish();
-        }else if (listShown == true){
+        } else if (listShown == true) {
             finish();
-        }else if (detailShown == true) {
+        } else if (detailShown == true) {
             getFragmentManager().popBackStack();
             ListFragment listFragment = new ListFragment();
             FragmentTransaction ft = getFragmentManager().beginTransaction();
@@ -336,86 +320,22 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
             detailShown = false;
         }
     }
-    /**
-     * Prilikom startovanja aplikacije potrebno je registrovati
-     * elemente sa kojimaa radimo. Kada aplikacija nije aktivna
-     * te elemente moramo da uklonimo.
-     */
-    @Override
-    protected void onResume(){
-        super.onResume();
 
-        setUpReceiver();
-        setUpManager();
-    }
-    /**
-     * Registrujemo nas BroadcastReceiver i dodajemo mu 'filter'.
-     * Filter koristimo prilikom prispeca poruka. Jedan receiver
-     * moze da reaguje na vise tipova poruka. One nam kazu
-     * sta tacno treba da se desi kada poruka odredjenog tipa (filera)
-     * stigne.
-     * */
-    private void setUpReceiver(){
-        sync = new SimpleReceiver();
-        //registracija jednog filtera
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("SYNC_DATA");
-        registerReceiver(sync, filter);
-    }
-    /**
-     * Kada zelimo da se odredjeni zadaci ponavljaju, potrebno je
-     * da registrujemo manager koji ce motriti kada je vreme da se
-     * taj posao obavi. Kada registruje vreme za pokretanje zadatka
-     * on emituje Intent operativnom sistemu sta je potrebno da se
-     * desi.
-     * Takodje potrebno je da definisemo ponavljanja tj. na koliko
-     * vremena zelimo da se posao ponovo obavi
-     * */
-    private void setUpManager(){
-        //Intent koji ce manager emitovat operativnom sisitemu
-        //Startujemo jedan servis
-        Intent intent = new Intent(this, SimpleService.class);
-        int status = ReviewerTools.getConStatus(getApplicationContext());
-        intent.putExtra("STATUS", status);
-        /**definisemo manager i kazemo kada je potrebno da se ponavlja
-
-        parametri:
-            context: this - u kom kontekstu zelimo da se intent izvrsava
-            requestCode: 0 - nas jedinstev kod
-            intent: intent koji zelimo da se izvrsi kada dodje vreme
-            flags: 0 - flag koji opisuje sta da se radi sa intent-om kada se poziv desi
-            detaljnije:https://developer.android.com/reference/android/app/PendingIntent.html#getService(android.content.Context, int, android.content.Intent, int)
-        */
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
-        //koristicemo sistemski AlarmManager pa je potrebno da dobijemo
-        //njegovu instancu.
-        AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        //definisemo kako ce alarm manager da reaguje.
-        //prvi parametar kaze da ce reagovati u rezimu ponavljanja
-        //drugi parametar od kada krece da meri vreme
-        //treci parametar na koliko jedinica vremena ce ragovati (minimalno 1min)
-        //poslednji parametar nam govori koju akciju treba da preduzmemo kada se alarm iskljuci
-        manager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(),
-                ReviewerTools.calTimeTillNextSync(1), pendingIntent);
-        Toast.makeText(this, "Alarm Set", Toast.LENGTH_SHORT).show();
-    }
-    /**
-     * Moramo voditi racuna o komponentama koje je potrebno osloboditi
-     * kada aplikacija nije aktivna.
-     * */
-    @Override
-    protected void onPause(){
-        //ako je manager kreiran potrebno je da ga uklonimo
-        if(manager != null){
-            manager.cancel(pendingIntent);
-            manager = null;
+    //Metoda koja komunicira sa bazom podataka
+    public DbHelper getDbHelper(){
+        if (databaseHelper == null){
+            databaseHelper = OpenHelperManager.getHelper(this, DbHelper.class);
         }
-        //osloboditi resurse koje koristi receiver
-        if(sync != null){
-            unregisterReceiver(sync);
-            sync = null;
-        }
-        super.onPause();
+        return databaseHelper;
     }
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
 
+        //nekon rada sa bazom podataka porebno je obavezno osloboditi resurse
+        if(databaseHelper != null){
+            OpenHelperManager.releaseHelper();
+            databaseHelper = null;
+        }
+    }
 }
