@@ -39,6 +39,10 @@
             android:parentActivityName=".activities.MainActivity"
             android:theme="@style/AppTheme.NoActionBar" />
 
+        <provider
+            android:authorities="com.example.androiddevelopment.glumcilegende"
+            android:name=".provider.GlumacProvider" />
+
         </application>
 
 </manifest>

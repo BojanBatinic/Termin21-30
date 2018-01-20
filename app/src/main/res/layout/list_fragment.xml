@@ -10,8 +10,8 @@
     <!-- ListView displays a list of scrollable items. The list items are automatically inserted to
     the list using an Adapter that pulls content from a source such as an array or database query -->
     <ListView
-        android:id="@+id/glumci"
+        android:id="@android:id/list"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="match_parent"/>
 
 </LinearLayout>

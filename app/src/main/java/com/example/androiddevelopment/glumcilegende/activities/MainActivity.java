@@ -2,43 +2,52 @@ package com.example.androiddevelopment.glumcilegende.activities;
 
 
 
+import android.app.Dialog;
 import android.app.FragmentTransaction;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.adapters.DrawerListAdapter;
 import com.example.androiddevelopment.glumcilegende.db.DbHelper;
-import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
 import com.example.androiddevelopment.glumcilegende.dialogs.AboutDialog;
 import com.example.androiddevelopment.glumcilegende.fragments.DetailFragment;
-import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
-import com.example.androiddevelopment.glumcilegende.fragments.ListFragment.OnGlumacSelectedListener;
+import com.example.androiddevelopment.glumcilegende.fragments.MyListFragment;
+import com.example.androiddevelopment.glumcilegende.fragments.MyListFragment.OnGlumacSelectedListener;
 import com.example.androiddevelopment.glumcilegende.model.NavigationItem;
+import com.example.androiddevelopment.glumcilegende.provider.GlumacContract;
+import com.example.androiddevelopment.glumcilegende.provider.model.Glumac;
 import com.j256.ormlite.android.apptools.OpenHelperManager;
 
 // Each activity extends Activity class or AppCompatActivity class
 public class MainActivity extends AppCompatActivity implements OnGlumacSelectedListener {
+
+    private static final int SELECT_PICTURE = 1;
 
     /* The click listner for ListView in the navigation drawer */
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
@@ -68,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
     private boolean listShown = false; // Is the ListFragment fragment shown?
     private boolean detailShown = false; // Is the DetailFragment fragment shown?
 
-    private int productId = 0; // selected item id
+    private int glumacId = 0; // selected item id
 
     private DbHelper databaseHelper;
 
@@ -138,8 +147,8 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         if (savedInstanceState == null) {
             // FragmentTransaction is a set of changes (e.g. adding, removing and replacing fragments) that you want to perform at the same time.
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ListFragment listFragment = new ListFragment();
-            ft.add(R.id.displayList, listFragment, "List_Fragment");
+            MyListFragment myListFragment = new MyListFragment();
+            ft.add(R.id.displayList, myListFragment, "List_Fragment");
             ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
             ft.commit();
             selectItemFromDrawer(0);
@@ -163,32 +172,104 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
 
         listShown = true;
         detailShown = false;
-        productId = 0;
+        glumacId = 0;
     }
 
-    //da bi dodali podatak u bazu, potrebno je da napravimo objekat klase
-    //koji reprezentuje tabelu i popunimo podacima
-    private void addItem() {
-        Glumac glumac = new Glumac();
-        glumac.setmName("Zoran Radmilović");
-        glumac.setBiografija("Legendarni Radovan III, Majstor iz Majsorske radionice itd...");
-        glumac.setRating(5f);
-        glumac.setImage("zoran.jpg");
+    /**Kada koristimo  Content provider sve sto zelimo da radimo nad bazom
+     * Moramo da navedemo kroz odredjenu URI putanju
+     *
+     * Ako zelimo da unesemo novi product moramo koristiti insert metodu prethodno
+     * definisanog URI-a
+     * content://AUTHORITY/CONTENT_URI_PATH/ odnosno u nasem slucaju
+     *
+     * content:com.example.androiddevelopment.glumcilegende.provider.model.Glumac
+     * I moramo formirati ContentValues objekat kljuc-vrednost sta zelimo i u koju kolonu da unesemo
+     */
+    private void addItemWP() {
+       //insert test
+        ContentValues values = new ContentValues();
+        values.clear();
+        values.put(GlumacContract.Glumac.FILED_NAME_NAME, "Zoran");
+        values.put(GlumacContract.Glumac.FILED_NAME_BIOGRAFIJA, "Jedan jedini i neponovljivi Radovan III...");
+        values.put(GlumacContract.Glumac.FILED_NAME_RATING, 5.0f);
+        values.put(GlumacContract.Glumac.FILED_NAME_IMAGE, "zoran.jpg");
+        getContentResolver().insert(GlumacContract.Glumac.contentUri, values);
 
-        //pozovemo metodu create da bi upisali u bazu
-        try {
-            getDbHelper().getGlumacDao().create(glumac);
-            refresh();
-            Toast.makeText(this, "Actor inserted", Toast.LENGTH_SHORT).show();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        Toast.makeText(this, "Inerted", Toast.LENGTH_SHORT).show();
+        /**
+         * Jednostavan test kako proci kroz celu tabelu glumci koja se nalazi na URI:
+         *
+         *  content://com.example.androiddevelopment.glumcilegende.provider.model.Glumac
+         *
+         *  Prvi parametar kursora je projekcija tj sta zelimo da selektujemo iz tabele
+         *  Drugi parametar je selekcioni naziv praktcno WHERE u klasicnom SQL-u tj po kojim kolonama zelimo da filtriramo
+         *  Treci paramerar su vrednosti tih selekcionih argumenta
+         *  Peti je po cemu zelimo da sortiramo Cursor
+         */
+        Cursor c = getContentResolver().query(GlumacContract.Glumac.contentUri, null, null, null, null);
+        if (c != null){
+            while (c.moveToNext()){
+                for (int i = 0; i < c.getColumnCount(); i++){
+                    Log.i("REZ", c.getColumnName(i) + " : " + c.getString(i));
+                }
+            }
+            //obavezno zatavarmo kursor!!!
+            c.close();
         }
+        finish();
+        startActivity(getIntent());
+
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_item_detail, menu);
         return super.onCreateOptionsMenu(menu);
+    }
+    /**
+     * Da bi dobili pristup Galeriji slika na uredjaju
+     * moramo preko URI-ja pristupiti delu baze gde su smestene
+     * slike uredjaja. Njima mozemo pristupiti koristeci sistemski
+     * ContentProvider i koristeci URI images/* putanju
+     *
+     * Posto biramo sliku potrebno je da pozovemo aktivnost koja iscekuje rezultat
+     * Kada dobijemo rezultat nazad prikazemo sliku i dobijemo njenu tacnu putanju
+     * */
+    private void selectPicture(){
+       Intent intent = new Intent();
+       intent.setType("image/*");
+       intent.setAction(Intent.ACTION_GET_CONTENT);
+       startActivityForResult(Intent.createChooser(intent, "Select Picture"), SELECT_PICTURE);
+    }
+    /**
+     * Sistemska metoda koja se automatksi poziva ako se
+     * aktivnost startuje u startActivityForResult rezimu
+     * Ako je ti slucaj i ako je sve proslo ok, mozemo da izvucemo
+     * sadrzaj i to da prikazemo. Rezultat NIJE slika nego URI do te slike.
+     * Na osnovu toga mozemo dobiti tacnu putnaju do slike ali i samu sliku
+     * */
+    public void onActivityResult(int requestCode, int resultCode, Intent data){
+        if (resultCode == RESULT_OK){
+            if (requestCode == SELECT_PICTURE){
+                Uri selectedIU = data.getData();
+
+                Dialog dialog = new Dialog(MainActivity.this);
+                dialog.setContentView(R.layout.image_dialog);
+                dialog.setTitle("Image dialog");
+
+                ImageView image = (ImageView) dialog.findViewById(R.id.image);
+
+                try {
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedIU);
+                    image.setImageBitmap(bitmap);
+                    Toast.makeText(this, selectedIU.getPath(), Toast.LENGTH_SHORT).show();
+
+                    dialog.show();
+                }catch (IOException e){
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     @Override
@@ -198,7 +279,10 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
                 refresh();
                 break;
             case R.id.action_add:
-                addItem();
+                addItemWP();
+                break;
+            case R.id.action_photo:
+                selectPicture();
                 break;
         }
 
@@ -207,7 +291,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
 
     // refresh() prikazuje novi sadrzaj. Povucemo nov sadrzaj iz baze i popunimo listu
     private void refresh() {
-        ListView listView = (ListView) findViewById(R.id.glumci);
+     /*   ListView listView = (ListView) findViewById(R.id.glumci);
 
         if (listView != null) {
             ArrayAdapter<Glumac> adapter = (ArrayAdapter<Glumac>) listView.getAdapter();
@@ -222,7 +306,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
                     e.printStackTrace();
                 }
             }
-        }
+        }*/
     }
 
 
@@ -278,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
     @Override
     public void onGlumacSelected(int id) {
 
-        productId = id;
+        glumacId = id;
 
         try {
             Glumac glumac = getDbHelper().getGlumacDao().queryForId(id);
@@ -311,9 +395,9 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
             finish();
         } else if (detailShown == true) {
             getFragmentManager().popBackStack();
-            ListFragment listFragment = new ListFragment();
+            MyListFragment myListFragment = new MyListFragment();
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.replace(R.id.displayList, listFragment, "List_Fragment");
+            ft.replace(R.id.displayList, myListFragment, "List_Fragment");
             ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
             ft.commit();
             listShown = true;

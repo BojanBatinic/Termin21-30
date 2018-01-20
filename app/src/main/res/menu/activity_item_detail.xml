@@ -13,4 +13,9 @@
         android:title="@string/fragment_detail_action_add"
         android:icon="@drawable/ic_action_add"
         app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/action_photo"
+        android:title="@string/fragment_detail_action_add"
+        android:icon="@android:drawable/ic_menu_gallery"
+        app:showAsAction="ifRoom" />
 </menu>

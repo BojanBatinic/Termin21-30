@@ -31,5 +31,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.j256.ormlite:ormlite-android:4.48'
     compile 'com.squareup.picasso:picasso:2.5.2'
-
+    compile "com.tojc.ormlite.android:ormlite-content-provider-library:1.0.4@aar"
 }

@@ -1,8 +1,14 @@
 package com.example.androiddevelopment.glumcilegende.fragments;
 
 import android.app.Fragment;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -11,16 +17,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RatingBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.activities.MainActivity;
-import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
+import com.example.androiddevelopment.glumcilegende.provider.model.Glumac;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,6 +46,14 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public void onCreate(Bundle saveInstanceState) {
         super.onCreate(saveInstanceState);
 
+        try {
+            if (glumac == null) {
+                glumac = ((MainActivity) getActivity()).getDbHelper().getGlumacDao().queryForAll().get(0);
+            }
+
+        }catch (SQLException e){
+            e.printStackTrace();
+        }
     }
 
     // onActivityCreated method is a life-cycle method that is called when the fragment's activity has been created and this fragment's view hierarchy instantiated.
@@ -103,24 +115,23 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //finds "spFilm" Spiner and sets "selection" property
-        Spinner spinner = (Spinner) view.findViewById(R.id.film);
-        ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<String>(
-                getActivity(),
-                android.R.layout.simple_spinner_item,
-                getResources().getStringArray(R.array.film_names)
-        ); //selected item will lookk like a spinner set from XML
-        spinnerArrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(spinnerArrayAdapter);
 
-        String[] data = getResources().getStringArray(R.array.film_names);
-
-        for (int i=0; i<data.length; i++){
-            if (data[i].equalsIgnoreCase(glumac.getFilm())){
-                spinner.setSelection(i);
-                break;
+        FloatingActionButton button = (FloatingActionButton) view.findViewById(R.id.like);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Creates notification with the notification builder
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(getActivity());
+                Bitmap bitmap = BitmapFactory.decodeResource(getActivity().getResources(), R.drawable.ic_action_like);
+                builder.setSmallIcon(R.drawable.ic_action_like);
+                builder.setContentTitle(getActivity().getString(R.string.notification_title));
+                builder.setContentText(getActivity().getString(R.string.notification_text));
+                builder.setLargeIcon(bitmap);
+                // Shows notification with the notification manager (notification ID is used to update the notification later on)
+                NotificationManager manager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+                manager.notify(NOTIFICATION_ID, builder.build());
             }
-        }
+        });
 
         return view;
     }
@@ -175,52 +186,21 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
         inflater.inflate(R.menu.detail_fragment_menu, menu);
         super.onCreateOptionsMenu(menu, inflater);
     }
-
-    private void doUpdateElement(){
-        if (glumac != null){
-            EditText name = (EditText) getActivity().findViewById(R.id.name);
-            glumac.setmName(name.getText().toString());
-
-            //finds "tvBiografija" TextView and sets "text" property
-            EditText biografija = (EditText) getActivity().findViewById(R.id.biografija);
-            glumac.setBiografija(biografija.getText().toString());
-
-            //finds "rbRating" RatingBar and sets "rating" property
-            RatingBar rating = (RatingBar) getActivity().findViewById(R.id.rating);
-            glumac.setRating(rating.getRating());
-
-            Spinner film = (Spinner) getActivity().findViewById(R.id.film);
-            glumac.setFilm(film.getSelectedItem().toString());
-
-            try{
-                ((MainActivity) getActivity()).getDbHelper().getGlumacDao().update(glumac);
-            }catch (SQLException e){
-                e.printStackTrace();
-            }
-            getActivity().onBackPressed();
-        }
-    }
-    private void  doRemoveElement(){
-        if (glumac != null){
-            try{
-                ((MainActivity) getActivity()).getDbHelper().getGlumacDao().delete(glumac);
-            }catch (SQLException e){
-                e.printStackTrace();
-            }
-            getActivity().onBackPressed();
-        }
-    }
     /**
-     * Na fragment dodajemo element za brisanje elementa i za izmenu podataka
+     * Na fragment dodajemo element za brisanje elementa
      * */
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
         switch (item.getItemId()){
             case R.id.remove:
-                doRemoveElement();
-                break;
-            case R.id.update:
-                doUpdateElement();
+                try{
+                    if (glumac != null){
+                        ((MainActivity) getActivity()).getDbHelper().getGlumacDao().delete(glumac);
+                        getActivity().onBackPressed();
+                    }
+                }catch (SQLException e){
+                    e.printStackTrace();
+                }
                 break;
         }
         return super.onOptionsItemSelected(item);
