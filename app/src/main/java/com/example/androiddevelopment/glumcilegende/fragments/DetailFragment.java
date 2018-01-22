@@ -24,7 +24,7 @@ import android.widget.TextView;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.activities.MainActivity;
-import com.example.androiddevelopment.glumcilegende.provider.model.Glumac;
+import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,14 +46,14 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public void onCreate(Bundle saveInstanceState) {
         super.onCreate(saveInstanceState);
 
-        try {
+       /* try {
             if (glumac == null) {
                 glumac = ((MainActivity) getActivity()).getDbHelper().getGlumacDao().queryForAll().get(0);
             }
 
         }catch (SQLException e){
             e.printStackTrace();
-        }
+        }*/
     }
 
     // onActivityCreated method is a life-cycle method that is called when the fragment's activity has been created and this fragment's view hierarchy instantiated.
@@ -143,11 +143,11 @@ public class DetailFragment extends Fragment implements AdapterView.OnItemSelect
     public void updateGlumac(Glumac glumac) {
         this.glumac = glumac;
 
-        EditText name = (EditText) getActivity().findViewById(R.id.name);
+        TextView name = (EditText) getActivity().findViewById(R.id.name);
         name.setText(glumac.getmName());
 
         //finds "tvBiografija" TextView and sets "text" property
-        EditText biografija = (EditText) getActivity().findViewById(R.id.biografija);
+        TextView biografija = (EditText) getActivity().findViewById(R.id.biografija);
         biografija.setText(glumac.getBiografija());
 
         //finds "rbRating" RatingBar and sets "rating" property

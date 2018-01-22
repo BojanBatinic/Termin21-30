@@ -3,8 +3,8 @@ package com.example.androiddevelopment.glumcilegende.db;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.example.androiddevelopment.glumcilegende.provider.GlumacContract;
-import com.example.androiddevelopment.glumcilegende.provider.model.Glumac;
+import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
+
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.support.ConnectionSource;
@@ -18,11 +18,17 @@ import java.sql.SQLException;
 
 public class DbHelper extends OrmLiteSqliteOpenHelper {
 
+    //Dajemo ime bazi
+    private static final String DATABASE_NAME = "ormlite.db";
+
+    //i pocetnu verziju baze. Obicno krece od 1
+    private static final int    DATABASE_VERSION = 2;
+
     private Dao<Glumac, Integer> mGlumacDao = null;
 
     //potrebno je dodati konstruktor zbog pravilne inicijalizacije biblioteke
     public DbHelper(Context context){
-        super(context, GlumacContract.DATABASE_NAME, null, GlumacContract.DATABASE_VERSION);
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     //Prilikom kreiranja baze potrebno je da pozovemo odgovarajuce metode biblioteke
@@ -50,7 +56,7 @@ public class DbHelper extends OrmLiteSqliteOpenHelper {
     //potrebno je napraviti Dao objekat za svaku tabelu
     public Dao<Glumac, Integer> getGlumacDao() throws SQLException{
         if (mGlumacDao == null){
-         mGlumacDao = getDao(Glumac.class);
+            mGlumacDao = getDao(Glumac.class);
         }
         return mGlumacDao;
     }

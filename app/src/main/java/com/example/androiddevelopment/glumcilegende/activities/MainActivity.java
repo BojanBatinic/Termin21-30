@@ -4,50 +4,53 @@ package com.example.androiddevelopment.glumcilegende.activities;
 
 import android.app.Dialog;
 import android.app.FragmentTransaction;
-import android.content.ContentValues;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.example.androiddevelopment.glumcilegende.R;
 import com.example.androiddevelopment.glumcilegende.adapters.DrawerListAdapter;
 import com.example.androiddevelopment.glumcilegende.db.DbHelper;
+import com.example.androiddevelopment.glumcilegende.db.model.Glumac;
 import com.example.androiddevelopment.glumcilegende.dialogs.AboutDialog;
 import com.example.androiddevelopment.glumcilegende.fragments.DetailFragment;
-import com.example.androiddevelopment.glumcilegende.fragments.MyListFragment;
-import com.example.androiddevelopment.glumcilegende.fragments.MyListFragment.OnGlumacSelectedListener;
+import com.example.androiddevelopment.glumcilegende.fragments.ListFragment;
+import com.example.androiddevelopment.glumcilegende.fragments.ListFragment.OnGlumacSelectedListener;
 import com.example.androiddevelopment.glumcilegende.model.NavigationItem;
-import com.example.androiddevelopment.glumcilegende.provider.GlumacContract;
-import com.example.androiddevelopment.glumcilegende.provider.model.Glumac;
+import com.example.androiddevelopment.glumcilegende.net.MyService;
+import com.example.androiddevelopment.glumcilegende.net.model.Event;
+
 import com.j256.ormlite.android.apptools.OpenHelperManager;
+import com.squareup.picasso.Picasso;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 // Each activity extends Activity class or AppCompatActivity class
 public class MainActivity extends AppCompatActivity implements OnGlumacSelectedListener {
-
-    private static final int SELECT_PICTURE = 1;
 
     /* The click listner for ListView in the navigation drawer */
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
@@ -147,8 +150,8 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         if (savedInstanceState == null) {
             // FragmentTransaction is a set of changes (e.g. adding, removing and replacing fragments) that you want to perform at the same time.
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            MyListFragment myListFragment = new MyListFragment();
-            ft.add(R.id.displayList, myListFragment, "List_Fragment");
+            ListFragment listFragment = new ListFragment();
+            ft.add(R.id.displayList, listFragment, "List_Fragment");
             ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
             ft.commit();
             selectItemFromDrawer(0);
@@ -175,49 +178,25 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
         glumacId = 0;
     }
 
-    /**Kada koristimo  Content provider sve sto zelimo da radimo nad bazom
-     * Moramo da navedemo kroz odredjenu URI putanju
-     *
-     * Ako zelimo da unesemo novi product moramo koristiti insert metodu prethodno
-     * definisanog URI-a
-     * content://AUTHORITY/CONTENT_URI_PATH/ odnosno u nasem slucaju
-     *
-     * content:com.example.androiddevelopment.glumcilegende.provider.model.Glumac
-     * I moramo formirati ContentValues objekat kljuc-vrednost sta zelimo i u koju kolonu da unesemo
-     */
-    private void addItemWP() {
-       //insert test
-        ContentValues values = new ContentValues();
-        values.clear();
-        values.put(GlumacContract.Glumac.FILED_NAME_NAME, "Zoran");
-        values.put(GlumacContract.Glumac.FILED_NAME_BIOGRAFIJA, "Jedan jedini i neponovljivi Radovan III...");
-        values.put(GlumacContract.Glumac.FILED_NAME_RATING, 5.0f);
-        values.put(GlumacContract.Glumac.FILED_NAME_IMAGE, "zoran.jpg");
-        getContentResolver().insert(GlumacContract.Glumac.contentUri, values);
+    //da bi dodali podatak u bazu, potrebno je da napravimo objekat klase
+    //koji reprezentuje tabelu i popunimo podacima
+    private void addItem() {
+       Glumac glumac = new Glumac();
+       glumac.setmName("Zoran Radmilovic");
+       glumac.setBiografija("Jedan jedini i neponovljivi Radovan III");
+       glumac.setRating(5.0f);
+       glumac.setImage("zoran.jpg");
 
-        Toast.makeText(this, "Inerted", Toast.LENGTH_SHORT).show();
-        /**
-         * Jednostavan test kako proci kroz celu tabelu glumci koja se nalazi na URI:
-         *
-         *  content://com.example.androiddevelopment.glumcilegende.provider.model.Glumac
-         *
-         *  Prvi parametar kursora je projekcija tj sta zelimo da selektujemo iz tabele
-         *  Drugi parametar je selekcioni naziv praktcno WHERE u klasicnom SQL-u tj po kojim kolonama zelimo da filtriramo
-         *  Treci paramerar su vrednosti tih selekcionih argumenta
-         *  Peti je po cemu zelimo da sortiramo Cursor
-         */
-        Cursor c = getContentResolver().query(GlumacContract.Glumac.contentUri, null, null, null, null);
-        if (c != null){
-            while (c.moveToNext()){
-                for (int i = 0; i < c.getColumnCount(); i++){
-                    Log.i("REZ", c.getColumnName(i) + " : " + c.getString(i));
-                }
-            }
-            //obavezno zatavarmo kursor!!!
-            c.close();
+       //pozovemo metodu create da bi upisali u bazu
+        try{
+            getDbHelper().getGlumacDao().create(glumac);
+
+            refresh();
+
+            Toast.makeText(this, "Glumac je dodat", Toast.LENGTH_SHORT).show();
+        }catch (SQLException e){
+            e.printStackTrace();
         }
-        finish();
-        startActivity(getIntent());
 
     }
 
@@ -225,51 +204,6 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_item_detail, menu);
         return super.onCreateOptionsMenu(menu);
-    }
-    /**
-     * Da bi dobili pristup Galeriji slika na uredjaju
-     * moramo preko URI-ja pristupiti delu baze gde su smestene
-     * slike uredjaja. Njima mozemo pristupiti koristeci sistemski
-     * ContentProvider i koristeci URI images/* putanju
-     *
-     * Posto biramo sliku potrebno je da pozovemo aktivnost koja iscekuje rezultat
-     * Kada dobijemo rezultat nazad prikazemo sliku i dobijemo njenu tacnu putanju
-     * */
-    private void selectPicture(){
-       Intent intent = new Intent();
-       intent.setType("image/*");
-       intent.setAction(Intent.ACTION_GET_CONTENT);
-       startActivityForResult(Intent.createChooser(intent, "Select Picture"), SELECT_PICTURE);
-    }
-    /**
-     * Sistemska metoda koja se automatksi poziva ako se
-     * aktivnost startuje u startActivityForResult rezimu
-     * Ako je ti slucaj i ako je sve proslo ok, mozemo da izvucemo
-     * sadrzaj i to da prikazemo. Rezultat NIJE slika nego URI do te slike.
-     * Na osnovu toga mozemo dobiti tacnu putnaju do slike ali i samu sliku
-     * */
-    public void onActivityResult(int requestCode, int resultCode, Intent data){
-        if (resultCode == RESULT_OK){
-            if (requestCode == SELECT_PICTURE){
-                Uri selectedIU = data.getData();
-
-                Dialog dialog = new Dialog(MainActivity.this);
-                dialog.setContentView(R.layout.image_dialog);
-                dialog.setTitle("Image dialog");
-
-                ImageView image = (ImageView) dialog.findViewById(R.id.image);
-
-                try {
-                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedIU);
-                    image.setImageBitmap(bitmap);
-                    Toast.makeText(this, selectedIU.getPath(), Toast.LENGTH_SHORT).show();
-
-                    dialog.show();
-                }catch (IOException e){
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
     @Override
@@ -279,24 +213,42 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
                 refresh();
                 break;
             case R.id.action_add:
-                addItemWP();
+                addItem();
                 break;
-            case R.id.action_photo:
-                selectPicture();
+            case R.id.action_image:
+                showRandomImage();
                 break;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
+    private void showRandomImage(){
+        final Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.band_layout);
+
+        ImageView image = (ImageView) dialog.findViewById(R.id.band_image);
+
+        Picasso.with(this).load("https://source.unsplash.com/random").into(image);
+
+        Button close = (Button) dialog.findViewById(R.id.close);
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        dialog.show();
+    }
+
     // refresh() prikazuje novi sadrzaj. Povucemo nov sadrzaj iz baze i popunimo listu
     private void refresh() {
-     /*   ListView listView = (ListView) findViewById(R.id.glumci);
+       ListView listView = (ListView) findViewById(R.id.glumci);
 
         if (listView != null) {
             ArrayAdapter<Glumac> adapter = (ArrayAdapter<Glumac>) listView.getAdapter();
 
-            if (listView != null) {
+            if (adapter != null) {
                 try {
                     adapter.clear();
                     List<Glumac> list = getDbHelper().getGlumacDao().queryForAll();
@@ -306,7 +258,7 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
                     e.printStackTrace();
                 }
             }
-        }*/
+        }
     }
 
 
@@ -395,9 +347,9 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
             finish();
         } else if (detailShown == true) {
             getFragmentManager().popBackStack();
-            MyListFragment myListFragment = new MyListFragment();
+            ListFragment listFragment = new ListFragment();
             FragmentTransaction ft = getFragmentManager().beginTransaction();
-            ft.replace(R.id.displayList, myListFragment, "List_Fragment");
+            ft.replace(R.id.displayList, listFragment, "List_Fragment");
             ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
             ft.commit();
             listShown = true;
@@ -421,5 +373,60 @@ public class MainActivity extends AppCompatActivity implements OnGlumacSelectedL
             OpenHelperManager.releaseHelper();
             databaseHelper = null;
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        //samo pozovemo metodu kada je potrebno da se ona izvrsi i ne moramo da vodimo vise racuna
+        //o pozadinskom desavanju
+        getArtistByName("Metallica");
+    }
+    /**
+     * Poziv REST servisa se odvija u pozadini i mi ne moramo da vodimo racuna o tome
+     * Samo je potrebno da registrujemo sta da se desi kada odgovor stigne od nas
+     * Taj deo treba da implementiramo dodavajuci Callback<List<Event>> unutar enqueue metode
+     *
+     * Servis koji pozivamo izgleda:
+     * http://rest.bandsintown.com/artists/Metallica/events?app_id=test
+     *
+     * gde je :
+     *
+     * http://rest.bandsintown.com/ osnova servisa
+     * artists/Metallica/events poziv servisa koji ce vratiti informacije o grupi
+     * ?app_id=test spisak dodatnih parametara ili upit nad servisom
+     * */
+    private void getArtistByName(String name){
+        Map<String, String> query = new HashMap<>();
+        query.put("app_id", "test");
+
+        Call<List<Event>> call = MyService.apiInterface().getArtistByName(name, query);
+        call.enqueue(new Callback<List<Event>>() {
+            @Override
+            public void onResponse(Call<List<Event>> call, Response<List<Event>> response) {
+                //obavezno proveriti da li je upit zavrsen uspesno 200 kod
+                if (response.code() == 200){
+                    List<Event> events = response.body();
+                    //posto sliku ucitavamo sa interneta, moramo je u pozadini skinuti na nas urejdja
+                    //da bi je prikazali. Da ne bi mi morali voditi racina o tome Picasso biblioteka
+                    // nam moze pomoci u tome. Potrebno je da kazemo sa koje adrese se slika ucitava
+                    // u koji imgeview objekat se ucitaca i u kojoj aktivnosti se posao odvija
+                    //Picasso.with(MainActivity.this).load(putanja_do_slike)
+                    // .into(imageView_u_koji_zelimo_da_smestimo_sliku);
+                    String evs = "";
+                    for (Event e : events){
+                        evs += "" + e.getVenue().getName() + "\n";
+                    }
+                    Toast.makeText(MainActivity.this, evs, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Event>> call, Throwable t) {
+                //u slucaju da je nesto poslo po zlu, ispisemo sta nije u redu tj sta je poruka greske
+                Toast.makeText(MainActivity.this, t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }

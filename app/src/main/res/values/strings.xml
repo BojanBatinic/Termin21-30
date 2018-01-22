@@ -34,7 +34,6 @@
     <string name="drawer_settings_long">Change App Settings</string>
     <string name="drawer_about">About</string>
     <string name="drawer_about_long">About Us</string>
-    <string name="delete">Delete</string>
-    <string name="update">Update</string>
+   <string name="show_image">Show image</string>
 
 </resources>
