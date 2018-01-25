@@ -9,7 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.androiddevelopment.glumcilegende.R;
-import com.example.androiddevelopment.glumcilegende.model.NavigationItem;
+import com.example.androiddevelopment.glumcilegende.model.NavItem;
 
 import java.util.ArrayList;
 
@@ -20,27 +20,27 @@ import java.util.ArrayList;
 public class DrawerListAdapter extends BaseAdapter {
 
     // A reference to the context (i.e. the activity containing the adapter)
-    Context context;
-    ArrayList<NavigationItem> navigationItems;
+    Context mContext;
+    ArrayList<NavItem> mNavItems;
 
     // Constructor should at least have context as a parameter
 
 
-    public DrawerListAdapter(Context context, ArrayList<NavigationItem> navigationItems) {
-        this.context = context;
-        this.navigationItems = navigationItems;
+    public DrawerListAdapter(Context context, ArrayList<NavItem> navItems) {
+        mContext = context;
+        mNavItems = navItems;
     }
 
     // Returns the item count
     @Override
     public int getCount() {
-        return navigationItems.size();
+        return mNavItems.size();
     }
 
     // Returns an item
     @Override
     public Object getItem(int position) {
-        return navigationItems.get(position);
+        return mNavItems.get(position);
     }
 
     // Returns an item ID
@@ -53,7 +53,7 @@ public class DrawerListAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
         View view;
         if(convertView == null){
-            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             view = inflater.inflate(R.layout.drawer_list_item, null);
         }
         else{
@@ -64,9 +64,9 @@ public class DrawerListAdapter extends BaseAdapter {
         TextView subtitleView = (TextView) view.findViewById(R.id.subTitle);
         ImageView iconView = (ImageView) view.findViewById(R.id.icon);
 
-        titleView.setText(navigationItems.get(position).getTitle());
-        subtitleView.setText(navigationItems.get(position).getSubtitle());
-        iconView.setImageResource(navigationItems.get(position).getIcon());
+        titleView.setText(mNavItems.get(position).getmTitle());
+        subtitleView.setText(mNavItems.get(position).getmSubtitle());
+        iconView.setImageResource(mNavItems.get(position).getmIcon());
 
         return view;
     }
